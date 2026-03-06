@@ -1,0 +1,24 @@
+# CODEOWNERS
+# This file specifies who should review pull requests
+
+* @Aumaodh
+
+# Backend
+/backend/ @Aumaodh
+/backend/controllers/ @Aumaodh
+/backend/routes/ @Aumaodh
+/backend/models/ @Aumaodh
+
+# Frontend
+/frontend/ @Aumaodh
+/frontend/src/pages/ @Aumaodh
+/frontend/src/components/ @Aumaodh
+
+# Documentation
+*.md @Aumaodh
+/docs/ @Aumaodh
+
+# Configuration
+docker-compose.yml @Aumaodh
+Dockerfile @Aumaodh
+.github/ @Aumaodh
