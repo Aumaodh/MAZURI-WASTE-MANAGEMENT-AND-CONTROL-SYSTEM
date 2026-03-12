@@ -24,7 +24,7 @@ function App() {
           <Route path="/waste/:id/edit" element={<PrivateRoute><WasteFormPage /></PrivateRoute>} />
           <Route path="/collections" element={<PrivateRoute><CollectionsPage /></PrivateRoute>} />
           <Route path="/reports" element={<PrivateRoute><ReportsPage /></PrivateRoute>} />
-          <Route path="/users" element={<PrivateRoute><UsersPage /></PrivateRoute>} />
+          <Route path="/users" element={<PrivateRoute allowedRoles={['admin']}><UsersPage /></PrivateRoute>} />
         </Routes>
       </div>
     </Router>

@@ -65,13 +65,17 @@ const wasteSchema = new mongoose.Schema({
   }
 });
 
-// Auto-generate wasteId
-wasteSchema.pre('save', async function(next) {
-  if (!this.wasteId) {
-    const count = await mongoose.model('Waste').countDocuments();
-    this.wasteId = `WASTE-${Date.now()}-${count + 1}`;
+// Auto-generate wasteId before required-field validation runs
+wasteSchema.pre('validate', async function(next) {
+  try {
+    if (!this.wasteId) {
+      const count = await this.constructor.countDocuments();
+      this.wasteId = `WASTE-${Date.now()}-${count + 1}`;
+    }
+    next();
+  } catch (error) {
+    next(error);
   }
-  next();
 });
 
 module.exports = mongoose.model('Waste', wasteSchema);

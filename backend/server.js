@@ -9,6 +9,7 @@ const wasteRoutes = require('./routes/wasteRoutes');
 const collectionRoutes = require('./routes/collectionRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const userRoutes = require('./routes/userRoutes');
+const { bootstrapAppData } = require('./services/bootstrapService');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -28,7 +29,10 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://mongo:27017/mazuri-waste-
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('MongoDB connected successfully'))
+.then(async () => {
+  console.log('MongoDB connected successfully');
+  await bootstrapAppData();
+})
 .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes

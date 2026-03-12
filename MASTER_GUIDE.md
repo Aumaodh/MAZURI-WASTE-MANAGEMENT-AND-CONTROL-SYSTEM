@@ -61,7 +61,7 @@ The **Mazuri Waste Management and Control System** is a comprehensive web-based 
 cd /workspaces/MAZURI-WASTE-MANAGEMENT-AND-CONTROL-SYSTEM
 
 # 2. Start services
-docker-compose up -d
+docker compose up -d
 
 # 3. Access application
 # Frontend: http://localhost:3000
@@ -81,13 +81,13 @@ Role: Admin (Full access)
 
 ```bash
 # Check services
-docker-compose ps
+docker compose ps
 
 # Test API
 curl http://localhost:5000/api/health
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ---
@@ -206,18 +206,25 @@ brew install docker docker-compose
 
 **Windows:**
 - Download Docker Desktop from https://www.docker.com/products/docker-desktop
-- Install and start
+- Install and start Docker Desktop
+- Open PowerShell in project root and run `docker compose up -d`
 
 #### Step 2: Start Application
 ```bash
 cd /workspaces/MAZURI-WASTE-MANAGEMENT-AND-CONTROL-SYSTEM
-docker-compose up -d
+docker compose up -d
 ```
 
 #### Step 3: Verify Services
 ```bash
-docker-compose ps
+docker compose ps
 # Expected: mongo, backend, frontend all "Up"
+```
+
+Optional ngrok tunnel (M-Pesa callback testing):
+
+```bash
+docker compose --env-file backend/.env --profile tunnel up -d
 ```
 
 #### Step 4: Access Application
@@ -239,6 +246,13 @@ docker-compose ps
    brew install node@18
    ```
 
+  ```powershell
+  # Windows (PowerShell)
+  winget install OpenJS.NodeJS.LTS
+  node -v
+  npm -v
+  ```
+
 2. **Install MongoDB**
    ```bash
    # Ubuntu
@@ -254,6 +268,13 @@ docker-compose ps
    brew services start mongodb-community
    ```
 
+  ```powershell
+  # Windows (PowerShell)
+  winget install MongoDB.Server
+  net start MongoDB
+  Get-Service MongoDB
+  ```
+
 3. **Setup Backend**
    ```bash
    cd backend
@@ -264,6 +285,15 @@ docker-compose ps
    npm run dev
    ```
 
+  ```powershell
+  # Windows (PowerShell)
+  cd backend
+  npm install
+  Copy-Item .env.example .env
+  code .env
+  npm run dev
+  ```
+
 #### Frontend Setup
 
 1. **Install Dependencies**
@@ -272,6 +302,13 @@ docker-compose ps
    npm install
    cp .env.example .env
    ```
+
+  ```powershell
+  # Windows (PowerShell)
+  cd frontend
+  npm install
+  Copy-Item .env.example .env
+  ```
 
 2. **Start Development Server**
    ```bash
@@ -300,8 +337,13 @@ JWT_EXPIRE=7d
 FRONTEND_URL=http://localhost:3000
 
 # Admin User
+ADMIN_NAME=System Administrator
 ADMIN_EMAIL=admin@mazuri.com
 ADMIN_PASSWORD=Admin@123
+
+# Optional ngrok tunnel profile
+NGROK_AUTHTOKEN=your_ngrok_authtoken
+NGROK_DOMAIN=your-reserved-domain.ngrok-free.dev
 ```
 
 #### Frontend (.env)

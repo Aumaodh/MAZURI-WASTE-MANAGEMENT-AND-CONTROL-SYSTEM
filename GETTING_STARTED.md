@@ -13,6 +13,14 @@ cd /workspaces/MAZURI-WASTE-MANAGEMENT-AND-CONTROL-SYSTEM
 docker-compose up -d
 ```
 
+Optional (for M-Pesa callback testing):
+
+```bash
+docker-compose --env-file backend/.env --profile tunnel up -d
+```
+
+Before using tunnel profile, set `NGROK_AUTHTOKEN` and `NGROK_DOMAIN` in `backend/.env`.
+
 ### Step 2: Access the Application
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:5000/api
@@ -21,6 +29,8 @@ docker-compose up -d
 ### Step 3: Login
 - **Email**: admin@mazuri.com
 - **Password**: Admin@123
+
+The backend auto-creates this admin account from `ADMIN_EMAIL` and `ADMIN_PASSWORD` on first startup.
 
 ## 📚 Documentation Overview
 

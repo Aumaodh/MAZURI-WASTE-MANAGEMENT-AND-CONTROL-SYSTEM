@@ -27,6 +27,7 @@ export const collectionService = {
   deleteCollection: (id) => api.delete(`/collections/${id}`),
   getCollectionStats: () => api.get('/collections/stats'),
   initiatePayment: (id, paymentData) => api.post(`/collections/${id}/payment/initiate`, paymentData),
+  recordCashPayment: (id, paymentData) => api.post(`/collections/${id}/payment/cash`, paymentData),
   getPaymentStatus: (id) => api.get(`/collections/${id}/payment`)
 };
 
@@ -41,9 +42,11 @@ export const reportService = {
 
 // User Service
 export const userService = {
+  createUser: (userData) => api.post('/users', userData),
   getAllUsers: (filters) => api.get('/users', { params: filters }),
   getUserById: (id) => api.get(`/users/${id}`),
   updateUser: (id, userData) => api.put(`/users/${id}`, userData),
+  resetUserPassword: (id, password) => api.patch(`/users/${id}/reset-password`, { password }),
   deleteUser: (id) => api.delete(`/users/${id}`),
   changeUserRole: (id, role) => api.patch(`/users/${id}/role`, { role })
 };

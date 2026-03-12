@@ -35,26 +35,65 @@ brew install docker docker-compose
 
 **Windows:**
 - Download Docker Desktop from https://www.docker.com/products/docker-desktop
-- Install and configure
+- Enable WSL2 integration during install
+- Ensure Docker Desktop is running before continuing
+
+Optional tools for Windows:
+- Install Git: https://git-scm.com/download/win
+- Install VS Code: https://code.visualstudio.com/
 
 #### Step 2: Deploy Application
+
+**Windows (PowerShell):**
+
+```powershell
+# Navigate to project directory
+cd C:\Users\<YourUser>\path\MAZURI-WASTE-MANAGEMENT-AND-CONTROL-SYSTEM
+
+# Start all services
+docker compose up -d
+
+# Verify services are running
+docker compose ps
+
+# Check backend logs
+docker compose logs -f backend
+
+# Check frontend logs
+docker compose logs -f frontend
+```
+
+**Linux/macOS:**
 
 ```bash
 # Navigate to project directory
 cd /workspaces/MAZURI-WASTE-MANAGEMENT-AND-CONTROL-SYSTEM
 
 # Start all services
-docker-compose up -d
+docker compose up -d
 
 # Verify services are running
-docker-compose ps
+docker compose ps
 
 # Check backend logs
-docker-compose logs -f backend
+docker compose logs -f backend
 
 # Check frontend logs
-docker-compose logs -f frontend
+docker compose logs -f frontend
 ```
+
+#### Step 2b: Start ngrok Tunnel for M-Pesa Callback
+
+Use this when testing STK push/callback on a new machine.
+
+```powershell
+docker compose --env-file backend/.env --profile tunnel up -d
+```
+
+Requirements in `backend/.env`:
+- `NGROK_AUTHTOKEN`
+- `NGROK_DOMAIN`
+- `MPESA_CALLBACK_URL=https://<your-ngrok-domain>/api/collections/payment/callback`
 
 #### Step 3: Access Application
 
@@ -76,6 +115,16 @@ docker-compose logs -f frontend
    brew install node@18
    ```
 
+   ```powershell
+   # Windows (PowerShell)
+   # Install Node.js LTS using winget
+   winget install OpenJS.NodeJS.LTS
+
+   # Verify installation
+   node -v
+   npm -v
+   ```
+
 2. **Install MongoDB**
    ```bash
    # Ubuntu
@@ -91,6 +140,17 @@ docker-compose logs -f frontend
    brew services start mongodb-community
    ```
 
+   ```powershell
+   # Windows (PowerShell) - Install MongoDB Community Server
+   winget install MongoDB.Server
+
+   # Start MongoDB service
+   net start MongoDB
+
+   # Verify service status
+   Get-Service MongoDB
+   ```
+
 3. **Setup Backend**
    ```bash
    cd backend
@@ -100,6 +160,19 @@ docker-compose logs -f frontend
    # Edit .env file with your configuration
    nano .env
    
+   # Start backend
+   npm run dev
+   ```
+
+   ```powershell
+   # Windows (PowerShell)
+   cd backend
+   npm install
+   Copy-Item .env.example .env
+
+   # Edit .env with your configuration (VS Code)
+   code .env
+
    # Start backend
    npm run dev
    ```
@@ -115,6 +188,14 @@ docker-compose logs -f frontend
 
 2. **Start Frontend**
    ```bash
+   npm start
+   ```
+
+   ```powershell
+   # Windows (PowerShell)
+   cd frontend
+   npm install
+   Copy-Item .env.example .env
    npm start
    ```
 
@@ -163,8 +244,21 @@ JWT_EXPIRE=7d
 FRONTEND_URL=http://localhost:3000
 
 # Admin User
+ADMIN_NAME=System Administrator
 ADMIN_EMAIL=admin@mazuri.com
 ADMIN_PASSWORD=Admin@123
+
+# M-Pesa (Daraja)
+MPESA_ENV=sandbox
+MPESA_CONSUMER_KEY=your_mpesa_consumer_key
+MPESA_CONSUMER_SECRET=your_mpesa_consumer_secret
+MPESA_SHORTCODE=174379
+MPESA_PASSKEY=your_mpesa_passkey
+MPESA_CALLBACK_URL=https://your-ngrok-domain.ngrok-free.dev/api/collections/payment/callback
+
+# Optional ngrok tunnel profile
+NGROK_AUTHTOKEN=your_ngrok_authtoken
+NGROK_DOMAIN=your-ngrok-domain.ngrok-free.dev
 ```
 
 ### 3. Frontend Configuration
@@ -181,7 +275,7 @@ REACT_APP_API_URL=http://localhost:5000/api
 
 ```bash
 # Using Docker
-docker-compose ps
+docker compose ps
 
 # Expected output:
 # NAME              STATUS      PORTS
@@ -203,6 +297,17 @@ curl http://localhost:5000/api/health
 curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@mazuri.com","password":"Admin@123"}'
+```
+
+Windows PowerShell equivalents:
+
+```powershell
+# Health check
+Invoke-RestMethod http://localhost:5000/api/health
+
+# Test login
+$body = @{ email = 'admin@mazuri.com'; password = 'Admin@123' } | ConvertTo-Json
+Invoke-RestMethod -Uri 'http://localhost:5000/api/auth/login' -Method Post -ContentType 'application/json' -Body $body
 ```
 
 ### Test Frontend
@@ -252,6 +357,22 @@ lsof -i :5000 | grep LISTEN | awk '{print $2}' | xargs kill -9
 lsof -i :27017 | grep LISTEN | awk '{print $2}' | xargs kill -9
 ```
 
+Windows PowerShell:
+
+```powershell
+# Check and kill process using port 3000
+netstat -ano | findstr :3000
+taskkill /PID <PID> /F
+
+# Check and kill process using port 5000
+netstat -ano | findstr :5000
+taskkill /PID <PID> /F
+
+# Check and kill process using port 27017
+netstat -ano | findstr :27017
+taskkill /PID <PID> /F
+```
+
 ### Issue: MongoDB Connection Failed
 
 ```bash
@@ -276,11 +397,19 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
+Windows PowerShell:
+
+```powershell
+npm cache clean --force
+Remove-Item -Recurse -Force node_modules, package-lock.json
+npm install
+```
+
 ### Issue: Docker Image Build Fails
 
 ```bash
 # Force rebuild without cache
-docker-compose up -d --build --no-cache
+docker compose up -d --build --no-cache
 
 # Check Docker logs
 docker system df
@@ -293,7 +422,7 @@ docker system prune -a
 
 ```bash
 # Using Docker
-docker-compose exec mongo mongodump --out /backup
+docker compose exec mongo mongodump --out /backup
 
 # Using local MongoDB
 mongodump --out /backup
@@ -303,7 +432,7 @@ mongodump --out /backup
 
 ```bash
 # Using Docker
-docker-compose exec mongo mongorestore /backup
+docker compose exec mongo mongorestore /backup
 
 # Using local MongoDB
 mongorestore /backup
@@ -313,13 +442,13 @@ mongorestore /backup
 
 ```bash
 # Stop existing containers
-docker-compose down
+docker compose down
 
 # Pull latest changes
 git pull origin main
 
 # Rebuild and start
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ## Production Deployment
@@ -387,7 +516,7 @@ top
 htop  # if installed
 
 # View database size
-docker-compose exec mongo du -sh /data/db
+docker compose exec mongo du -sh /data/db
 ```
 
 ## Next Steps

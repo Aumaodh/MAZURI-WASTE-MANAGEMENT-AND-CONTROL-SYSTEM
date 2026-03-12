@@ -15,25 +15,31 @@
 
 ```bash
 # Build all images
-docker-compose build
+docker compose build
 
 # Build specific service
-docker-compose build backend
-docker-compose build frontend
+docker compose build backend
+docker compose build frontend
 ```
 
 ### 2. Running in Production
 
 ```bash
 # Start in detached mode
-docker-compose up -d
+docker compose up -d
 
 # Verify services
-docker-compose ps
+docker compose ps
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 ```
+
+Windows PowerShell notes:
+- Run Docker Desktop before deployment commands.
+- Use PowerShell in project root for all `docker compose` commands.
+- For local M-Pesa callback testing, start tunnel profile with:
+`docker compose --env-file backend/.env --profile tunnel up -d`
 
 ### 3. Environment Configuration
 
@@ -312,14 +318,14 @@ server {
 
 ```bash
 # View real-time resource usage
-docker-compose stats
+docker compose stats
 
 # View logs
-docker-compose logs -f backend
-docker-compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f frontend
 
 # Save logs
-docker-compose logs > logs.txt
+docker compose logs > logs.txt
 ```
 
 ### Application Monitoring
@@ -338,10 +344,10 @@ watch -n 1 'curl -s http://localhost:5000/api/health | jq'
 
 ```bash
 # Create backup
-docker-compose exec mongo mongodump --out /backup
+docker compose exec mongo mongodump --out /backup
 
 # Restore backup
-docker-compose exec mongo mongorestore /backup
+docker compose exec mongo mongorestore /backup
 ```
 
 ### Automated Backups
@@ -398,10 +404,10 @@ upstream backend {
 
 ```bash
 # Scale backend containers
-docker-compose up --scale backend=3
+docker compose up --scale backend=3
 
 # Scale frontend containers
-docker-compose up --scale frontend=2
+docker compose up --scale frontend=2
 ```
 
 ### Database Scaling
@@ -442,13 +448,13 @@ kill -9 <PID>
 
 **Container not starting**
 ```bash
-docker-compose logs backend
-docker-compose exec backend bash
+docker compose logs backend
+docker compose exec backend bash
 ```
 
 **Database connection failed**
 ```bash
-docker-compose exec mongo mongo --eval "db.adminCommand('ping')"
+docker compose exec mongo mongo --eval "db.adminCommand('ping')"
 ```
 
 ## Disaster Recovery

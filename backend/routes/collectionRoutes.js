@@ -7,6 +7,7 @@ const {
   deleteCollection,
   getCollectionStats,
   initiateCollectionPayment,
+  recordCollectionCashPayment,
   handleMpesaCallback,
   getCollectionPaymentStatus
 } = require('../controllers/collectionController');
@@ -24,6 +25,7 @@ router.post('/', createCollection);
 router.get('/', getAllCollections);
 router.get('/stats', getCollectionStats);
 router.post('/:id/payment/initiate', initiateCollectionPayment);
+router.post('/:id/payment/cash', recordCollectionCashPayment);
 router.get('/:id/payment', getCollectionPaymentStatus);
 router.get('/:id', getCollectionById);
 router.put('/:id', updateCollection);

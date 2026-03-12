@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { collectionService, wasteService, userService } from '../services';
 
+const defaultPaymentForm = {
+  method: 'mpesa',
+  amount: '',
+  phoneNumber: '',
+  reference: ''
+};
+
 const CollectionsPage = () => {
   const [collections, setCollections] = useState([]);
   const [waste, setWaste] = useState([]);
@@ -18,6 +25,12 @@ const CollectionsPage = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentCollection, setPaymentCollection] = useState(null);
+  const [paymentForm, setPaymentForm] = useState(defaultPaymentForm);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyCollection, setHistoryCollection] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -56,7 +69,7 @@ const CollectionsPage = () => {
       setShowForm(false);
       fetchData();
     } catch (err) {
-      setError('Failed to create collection');
+      setError(err?.response?.data?.message || 'Failed to create collection');
     }
   };
 
@@ -70,31 +83,74 @@ const CollectionsPage = () => {
     }
   };
 
-  const handlePayment = async (collection) => {
+  const openPaymentModal = (collection) => {
     const defaultAmount = collection?.payment?.requiredAmount || Math.ceil((collection?.actualQuantity?.amount || 0) * 50);
 
-    const amountInput = window.prompt(
-      `Enter amount to charge for ${collection.collectionId}:`,
-      defaultAmount > 0 ? String(defaultAmount) : ''
-    );
+    setPaymentCollection(collection);
+    setPaymentForm({
+      ...defaultPaymentForm,
+      amount: defaultAmount > 0 ? String(defaultAmount) : ''
+    });
+    setError('');
+    setShowPaymentModal(true);
+  };
 
-    if (!amountInput) return;
+  const closePaymentModal = () => {
+    if (processingPayment) return;
+    setShowPaymentModal(false);
+    setPaymentCollection(null);
+    setPaymentForm(defaultPaymentForm);
+  };
 
-    const amount = Number(amountInput);
+  const openHistoryModal = (collection) => {
+    setHistoryCollection(collection);
+    setShowHistoryModal(true);
+  };
+
+  const closeHistoryModal = () => {
+    setShowHistoryModal(false);
+    setHistoryCollection(null);
+  };
+
+  const submitPayment = async (e) => {
+    e.preventDefault();
+
+    if (!paymentCollection) return;
+
+    const amount = Number(paymentForm.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
       setError('Please enter a valid amount greater than 0');
       return;
     }
 
-    const phoneNumber = window.prompt('Enter customer M-Pesa phone number (e.g. 07XXXXXXXX):');
-    if (!phoneNumber) return;
+    if (paymentForm.method === 'mpesa' && !paymentForm.phoneNumber.trim()) {
+      setError('Phone number is required for M-Pesa payment');
+      return;
+    }
 
     try {
-      const response = await collectionService.initiatePayment(collection._id, { amount, phoneNumber });
-      alert(response?.data?.message || 'Payment request sent to customer phone');
+      setProcessingPayment(true);
+
+      if (paymentForm.method === 'mpesa') {
+        const response = await collectionService.initiatePayment(paymentCollection._id, {
+          amount,
+          phoneNumber: paymentForm.phoneNumber.trim()
+        });
+        alert(response?.data?.message || 'Payment request sent to customer phone');
+      } else {
+        const response = await collectionService.recordCashPayment(paymentCollection._id, {
+          amount,
+          reference: paymentForm.reference.trim()
+        });
+        alert(response?.data?.message || 'Cash payment recorded');
+      }
+
+      closePaymentModal();
       fetchData();
     } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to initiate payment');
+      setError(err?.response?.data?.message || 'Failed to process payment');
+    } finally {
+      setProcessingPayment(false);
     }
   };
 
@@ -253,32 +309,186 @@ const CollectionsPage = () => {
                     <small>
                       KES {c.payment?.requiredAmount || 0}
                     </small>
+                    <small>
+                      {c.payment?.method ? `Method: ${c.payment.method}` : 'Method: -'}
+                    </small>
                   </div>
                 </td>
                 <td>{new Date(c.collectionDate).toLocaleDateString()}</td>
                 <td>
-                  <button
-                    className="btn-primary"
-                    onClick={() => handlePayment(c)}
-                    disabled={c.payment?.status === 'paid' || c.payment?.status === 'pending'}
-                  >
-                    {c.payment?.status === 'paid'
-                      ? 'Paid'
-                      : c.payment?.status === 'pending'
-                        ? 'Pending Confirmation'
-                        : 'Pay with M-Pesa'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      className="btn-primary"
+                      onClick={() => openPaymentModal(c)}
+                      disabled={c.payment?.status === 'paid' || c.payment?.status === 'pending'}
+                    >
+                      {c.payment?.status === 'paid'
+                        ? 'Paid'
+                        : c.payment?.status === 'pending'
+                          ? 'Pending Confirmation'
+                          : 'Record Payment'}
+                    </button>
+                    <button className="btn-success" onClick={() => openHistoryModal(c)}>
+                      History
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {showPaymentModal && (
+        <div style={styles.modalOverlay}>
+          <div className="card" style={styles.modalCard}>
+            <h3 style={{ marginTop: 0 }}>Process Payment</h3>
+            <p>
+              <strong>{paymentCollection?.collectionId}</strong>
+            </p>
+
+            <form onSubmit={submitPayment}>
+              <div style={{ marginBottom: '12px' }}>
+                <label>Payment Method</label>
+                <select
+                  value={paymentForm.method}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
+                >
+                  <option value="mpesa">M-Pesa</option>
+                  <option value="cash">Cash</option>
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label>Amount (KES)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={paymentForm.amount}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                  required
+                />
+              </div>
+
+              {paymentForm.method === 'mpesa' && (
+                <div style={{ marginBottom: '12px' }}>
+                  <label>Customer Phone Number</label>
+                  <input
+                    type="text"
+                    placeholder="07XXXXXXXX or 2547XXXXXXXX"
+                    value={paymentForm.phoneNumber}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, phoneNumber: e.target.value })}
+                    required
+                  />
+                </div>
+              )}
+
+              {paymentForm.method === 'cash' && (
+                <div style={{ marginBottom: '12px' }}>
+                  <label>Cash Reference (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="Receipt number or note"
+                    value={paymentForm.reference}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button type="submit" className="btn-success" disabled={processingPayment}>
+                  {processingPayment ? 'Processing...' : (paymentForm.method === 'mpesa' ? 'Send STK Push' : 'Confirm Cash Payment')}
+                </button>
+                <button type="button" className="btn-danger" onClick={closePaymentModal} disabled={processingPayment}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showHistoryModal && historyCollection && (
+        <div style={styles.modalOverlay}>
+          <div className="card" style={styles.historyModalCard}>
+            <h3 style={{ marginTop: 0 }}>Payment History</h3>
+            <p>
+              <strong>{historyCollection.collectionId}</strong>
+            </p>
+
+            {Array.isArray(historyCollection?.payment?.history) && historyCollection.payment.history.length > 0 ? (
+              <div style={styles.historyList}>
+                {[...historyCollection.payment.history]
+                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                  .map((item, index) => (
+                    <div key={`${item.createdAt || ''}-${index}`} style={styles.historyItem}>
+                      <div style={styles.historyTopLine}>
+                        <strong style={{ textTransform: 'capitalize' }}>{item.method || '-'}</strong>
+                        <span style={{ textTransform: 'capitalize' }}>{item.status || '-'}</span>
+                      </div>
+                      <small>KES {item.amount || 0}</small>
+                      {item.phoneNumber && <small>Phone: {item.phoneNumber}</small>}
+                      {item.reference && <small>Ref: {item.reference}</small>}
+                      {item.message && <small>{item.message}</small>}
+                      <small>{item.createdAt ? new Date(item.createdAt).toLocaleString() : '-'}</small>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <p>No payment history yet.</p>
+            )}
+
+            <div style={{ marginTop: '12px' }}>
+              <button type="button" className="btn-danger" onClick={closeHistoryModal}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 const styles = {
+  modalOverlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0, 0, 0, 0.45)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: '20px'
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: '520px'
+  },
+  historyModalCard: {
+    width: '100%',
+    maxWidth: '680px'
+  },
+  historyList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    maxHeight: '360px',
+    overflowY: 'auto'
+  },
+  historyItem: {
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    padding: '10px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px'
+  },
+  historyTopLine: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '8px'
+  },
   formGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',

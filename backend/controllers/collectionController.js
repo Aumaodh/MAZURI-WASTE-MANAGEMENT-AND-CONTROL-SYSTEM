@@ -24,6 +24,24 @@ const ensurePaymentState = (collection) => {
   if (!collection.payment.status) {
     collection.payment.status = 'unpaid';
   }
+
+  if (!Array.isArray(collection.payment.history)) {
+    collection.payment.history = [];
+  }
+};
+
+const addPaymentHistoryEntry = (collection, entry) => {
+  ensurePaymentState(collection);
+  collection.payment.history.push({
+    method: entry.method,
+    status: entry.status,
+    amount: Number(entry.amount) || 0,
+    currency: entry.currency || 'KES',
+    phoneNumber: entry.phoneNumber,
+    reference: entry.reference,
+    message: entry.message,
+    createdAt: new Date()
+  });
 };
 
 const calculateCollectionAmount = (collection) => {
@@ -228,6 +246,7 @@ const initiateCollectionPayment = async (req, res) => {
 
     collection.payment.requiredAmount = amount;
     collection.payment.currency = 'KES';
+    collection.payment.method = 'mpesa';
     collection.payment.phoneNumber = phoneNumber;
     collection.payment.status = 'pending';
     collection.payment.lastAttemptAt = new Date();
@@ -238,10 +257,83 @@ const initiateCollectionPayment = async (req, res) => {
     collection.payment.customerMessage = mpesaResponse.CustomerMessage;
     collection.payment.failureReason = undefined;
 
+    addPaymentHistoryEntry(collection, {
+      method: 'mpesa',
+      status: 'pending',
+      amount,
+      currency: 'KES',
+      phoneNumber,
+      reference: mpesaResponse.CheckoutRequestID,
+      message: mpesaResponse.CustomerMessage || 'M-Pesa payment request sent'
+    });
+
     await collection.save();
 
     return res.status(200).json({
       message: 'M-Pesa payment request sent',
+      payment: collection.payment
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// Record cash payment for a collection
+const recordCollectionCashPayment = async (req, res) => {
+  try {
+    const collection = await Collection.findById(req.params.id);
+
+    if (!collection) {
+      return res.status(404).json({ message: 'Collection not found' });
+    }
+
+    ensurePaymentState(collection);
+
+    if (collection?.payment?.status === 'paid') {
+      return res.status(400).json({ message: 'Collection is already paid' });
+    }
+
+    const requestedAmount = Number(req.body.amount);
+    const baseAmount = collection?.payment?.requiredAmount || calculateCollectionAmount(collection);
+    const amount = Number.isFinite(requestedAmount) && requestedAmount > 0
+      ? Math.ceil(requestedAmount)
+      : Math.ceil(baseAmount);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ message: 'Payment amount must be greater than zero' });
+    }
+
+    const reference = req.body.reference ? String(req.body.reference).trim() : '';
+
+    collection.payment.requiredAmount = amount;
+    collection.payment.currency = 'KES';
+    collection.payment.method = 'cash';
+    collection.payment.status = 'paid';
+    collection.payment.paidAt = new Date();
+    collection.payment.responseCode = '0';
+    collection.payment.responseDescription = 'Cash payment confirmed';
+    collection.payment.customerMessage = 'Cash payment recorded successfully';
+    collection.payment.cashReference = reference || `CASH-${Date.now()}`;
+    collection.payment.failureReason = undefined;
+    collection.payment.callbackPayload = undefined;
+    collection.payment.lastAttemptAt = new Date();
+    collection.payment.merchantRequestId = undefined;
+    collection.payment.checkoutRequestId = undefined;
+    collection.payment.mpesaReceiptNumber = undefined;
+
+    addPaymentHistoryEntry(collection, {
+      method: 'cash',
+      status: 'paid',
+      amount,
+      currency: 'KES',
+      reference: collection.payment.cashReference,
+      message: 'Cash payment recorded'
+    });
+
+    await collection.save();
+
+    return res.status(200).json({
+      message: 'Cash payment recorded successfully',
       payment: collection.payment
     });
   } catch (error) {
@@ -282,13 +374,34 @@ const handleMpesaCallback = async (req, res) => {
       }, {});
 
       collection.payment.status = 'paid';
+      collection.payment.method = 'mpesa';
       collection.payment.mpesaReceiptNumber = metadataMap.MpesaReceiptNumber;
       collection.payment.phoneNumber = formatPhoneNumber(metadataMap.PhoneNumber || collection.payment.phoneNumber);
       collection.payment.paidAt = parseMpesaDate(metadataMap.TransactionDate) || new Date();
       collection.payment.failureReason = undefined;
+
+      addPaymentHistoryEntry(collection, {
+        method: 'mpesa',
+        status: 'paid',
+        amount: collection.payment.requiredAmount,
+        currency: collection.payment.currency,
+        phoneNumber: collection.payment.phoneNumber,
+        reference: metadataMap.MpesaReceiptNumber || collection.payment.checkoutRequestId,
+        message: callback.ResultDesc || 'M-Pesa payment confirmed'
+      });
     } else {
       collection.payment.status = 'failed';
       collection.payment.failureReason = callback.ResultDesc;
+
+      addPaymentHistoryEntry(collection, {
+        method: 'mpesa',
+        status: 'failed',
+        amount: collection.payment.requiredAmount,
+        currency: collection.payment.currency,
+        phoneNumber: collection.payment.phoneNumber,
+        reference: collection.payment.checkoutRequestId,
+        message: callback.ResultDesc || 'M-Pesa payment failed'
+      });
     }
 
     await collection.save();
@@ -325,6 +438,7 @@ module.exports = {
   deleteCollection,
   getCollectionStats,
   initiateCollectionPayment,
+  recordCollectionCashPayment,
   handleMpesaCallback,
   getCollectionPaymentStatus
 };

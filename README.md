@@ -52,9 +52,21 @@ docker-compose up -d
 # Backend API: http://localhost:5000
 ```
 
+### Optional: Start ngrok Tunnel (for M-Pesa callbacks)
+
+Set `NGROK_AUTHTOKEN` and `NGROK_DOMAIN` in `backend/.env`, then run:
+
+```bash
+docker-compose --env-file backend/.env --profile tunnel up -d
+```
+
+The tunnel UI will be available on `http://localhost:4040`.
+
 ### Login Credentials
 - **Email**: admin@mazuri.com
 - **Password**: Admin@123
+
+The backend auto-creates this admin account from `ADMIN_EMAIL` and `ADMIN_PASSWORD` on first startup if it does not exist.
 
 ## Project Structure
 
@@ -158,6 +170,7 @@ GET /api/auth/me
 # DELETE /api/collections/:id - Delete collection
 # GET /api/collections/stats  - Get statistics
 # POST /api/collections/:id/payment/initiate - Send M-Pesa STK push
+# POST /api/collections/:id/payment/cash     - Record cash payment
 # GET /api/collections/:id/payment           - Check payment status
 # POST /api/collections/payment/callback     - M-Pesa callback endpoint
 ```
@@ -241,6 +254,15 @@ MPESA_CONSUMER_SECRET=your_mpesa_consumer_secret
 MPESA_SHORTCODE=174379
 MPESA_PASSKEY=your_mpesa_passkey
 MPESA_CALLBACK_URL=https://your-public-domain/api/collections/payment/callback
+
+# Admin bootstrap
+ADMIN_NAME=System Administrator
+ADMIN_EMAIL=admin@mazuri.com
+ADMIN_PASSWORD=Admin@123
+
+# Optional ngrok tunnel profile
+NGROK_AUTHTOKEN=your_ngrok_authtoken
+NGROK_DOMAIN=your-reserved-domain.ngrok-free.dev
 ```
 
 ### Frontend (.env)
@@ -252,8 +274,11 @@ REACT_APP_API_URL=http://localhost:5000/api
 
 - Every collection now carries a payment object with amount and status (`unpaid`, `pending`, `paid`, `failed`).
 - A collection cannot be marked `completed` until payment status is `paid`.
-- In the Collections page, use the `Pay with M-Pesa` action to prompt for amount and phone number and send an STK push.
-- For local callback testing, expose your backend URL using a tunnel tool (for example ngrok) and set `MPESA_CALLBACK_URL` to that public URL.
+- In the Collections page, use `Record Payment` to open a modal and choose M-Pesa or Cash.
+- For local callback testing, set `MPESA_CALLBACK_URL` to your ngrok URL:
+	`https://<your-ngrok-domain>/api/collections/payment/callback`
+- You can run ngrok as part of Docker using:
+	`docker-compose --env-file backend/.env --profile tunnel up -d`
 
 ## Database Models
 
