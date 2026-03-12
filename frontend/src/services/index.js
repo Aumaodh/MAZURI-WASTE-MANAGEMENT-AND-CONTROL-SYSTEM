@@ -25,7 +25,9 @@ export const collectionService = {
   getCollectionById: (id) => api.get(`/collections/${id}`),
   updateCollection: (id, collectionData) => api.put(`/collections/${id}`, collectionData),
   deleteCollection: (id) => api.delete(`/collections/${id}`),
-  getCollectionStats: () => api.get('/collections/stats')
+  getCollectionStats: () => api.get('/collections/stats'),
+  initiatePayment: (id, paymentData) => api.post(`/collections/${id}/payment/initiate`, paymentData),
+  getPaymentStatus: (id) => api.get(`/collections/${id}/payment`)
 };
 
 // Report Service

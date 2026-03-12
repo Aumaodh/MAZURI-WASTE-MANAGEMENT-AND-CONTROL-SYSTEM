@@ -7,6 +7,7 @@ A comprehensive web-based platform designed to streamline waste collection, moni
 - **Waste Management**: Log, track, and manage waste from various sources (residential, commercial, industrial, institutional, agricultural)
 - **Waste Types**: Support for multiple waste types (organic, recyclable, hazardous, electronic, mixed)
 - **Collection Scheduling**: Automated scheduling of waste collection with assignment to collectors
+- **M-Pesa Collection Payments**: Trigger STK Push payments for each collection and track payment status
 - **User Management**: Role-based access control with multiple user roles (Admin, Waste Manager, Collector, Supervisor, Viewer)
 - **Analytics & Reporting**: Generate daily, weekly, monthly, quarterly, and annual reports with insights
 - **Real-time Tracking**: Monitor waste collection status in real-time
@@ -156,6 +157,9 @@ GET /api/auth/me
 # PUT /api/collections/:id    - Update collection
 # DELETE /api/collections/:id - Delete collection
 # GET /api/collections/stats  - Get statistics
+# POST /api/collections/:id/payment/initiate - Send M-Pesa STK push
+# GET /api/collections/:id/payment           - Check payment status
+# POST /api/collections/payment/callback     - M-Pesa callback endpoint
 ```
 
 ### Reports
@@ -226,12 +230,30 @@ MONGODB_URI=mongodb://admin:password@mongo:27017/mazuri-waste-management
 PORT=5000
 JWT_SECRET=your_secret_key
 FRONTEND_URL=http://localhost:3000
+
+# Collection payment pricing
+COLLECTION_RATE_PER_UNIT=50
+
+# M-Pesa Daraja config
+MPESA_ENV=sandbox
+MPESA_CONSUMER_KEY=your_mpesa_consumer_key
+MPESA_CONSUMER_SECRET=your_mpesa_consumer_secret
+MPESA_SHORTCODE=174379
+MPESA_PASSKEY=your_mpesa_passkey
+MPESA_CALLBACK_URL=https://your-public-domain/api/collections/payment/callback
 ```
 
 ### Frontend (.env)
 ```
 REACT_APP_API_URL=http://localhost:5000/api
 ```
+
+## M-Pesa Integration Notes
+
+- Every collection now carries a payment object with amount and status (`unpaid`, `pending`, `paid`, `failed`).
+- A collection cannot be marked `completed` until payment status is `paid`.
+- In the Collections page, use the `Pay with M-Pesa` action to prompt for amount and phone number and send an STK push.
+- For local callback testing, expose your backend URL using a tunnel tool (for example ngrok) and set `MPESA_CALLBACK_URL` to that public URL.
 
 ## Database Models
 

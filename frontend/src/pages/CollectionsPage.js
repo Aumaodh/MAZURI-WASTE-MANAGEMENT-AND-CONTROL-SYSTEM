@@ -66,7 +66,35 @@ const CollectionsPage = () => {
       setCollections(collections.map(c => c._id === id ? { ...c, status: newStatus } : c));
       alert('Status updated successfully');
     } catch (err) {
-      setError('Failed to update status');
+      setError(err?.response?.data?.message || 'Failed to update status');
+    }
+  };
+
+  const handlePayment = async (collection) => {
+    const defaultAmount = collection?.payment?.requiredAmount || Math.ceil((collection?.actualQuantity?.amount || 0) * 50);
+
+    const amountInput = window.prompt(
+      `Enter amount to charge for ${collection.collectionId}:`,
+      defaultAmount > 0 ? String(defaultAmount) : ''
+    );
+
+    if (!amountInput) return;
+
+    const amount = Number(amountInput);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError('Please enter a valid amount greater than 0');
+      return;
+    }
+
+    const phoneNumber = window.prompt('Enter customer M-Pesa phone number (e.g. 07XXXXXXXX):');
+    if (!phoneNumber) return;
+
+    try {
+      const response = await collectionService.initiatePayment(collection._id, { amount, phoneNumber });
+      alert(response?.data?.message || 'Payment request sent to customer phone');
+      fetchData();
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Failed to initiate payment');
     }
   };
 
@@ -192,6 +220,7 @@ const CollectionsPage = () => {
               <th>Location</th>
               <th>Quantity</th>
               <th>Status</th>
+              <th>Payment</th>
               <th>Date</th>
               <th>Actions</th>
             </tr>
@@ -216,8 +245,30 @@ const CollectionsPage = () => {
                     <option value="failed">Failed</option>
                   </select>
                 </td>
+                <td>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <span style={{ textTransform: 'capitalize' }}>
+                      {c.payment?.status || 'unpaid'}
+                    </span>
+                    <small>
+                      KES {c.payment?.requiredAmount || 0}
+                    </small>
+                  </div>
+                </td>
                 <td>{new Date(c.collectionDate).toLocaleDateString()}</td>
-                <td>View Details</td>
+                <td>
+                  <button
+                    className="btn-primary"
+                    onClick={() => handlePayment(c)}
+                    disabled={c.payment?.status === 'paid' || c.payment?.status === 'pending'}
+                  >
+                    {c.payment?.status === 'paid'
+                      ? 'Paid'
+                      : c.payment?.status === 'pending'
+                        ? 'Pending Confirmation'
+                        : 'Pay with M-Pesa'}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

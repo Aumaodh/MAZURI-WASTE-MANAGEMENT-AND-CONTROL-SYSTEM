@@ -41,6 +41,33 @@ const collectionSchema = new mongoose.Schema({
     enum: ['scheduled', 'in-progress', 'completed', 'failed'],
     default: 'scheduled'
   },
+  payment: {
+    requiredAmount: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    currency: {
+      type: String,
+      default: 'KES'
+    },
+    status: {
+      type: String,
+      enum: ['unpaid', 'pending', 'paid', 'failed'],
+      default: 'unpaid'
+    },
+    phoneNumber: String,
+    mpesaReceiptNumber: String,
+    merchantRequestId: String,
+    checkoutRequestId: String,
+    responseCode: String,
+    responseDescription: String,
+    customerMessage: String,
+    lastAttemptAt: Date,
+    paidAt: Date,
+    failureReason: String,
+    callbackPayload: mongoose.Schema.Types.Mixed
+  },
   notes: String,
   photos: [String],
   createdAt: {
